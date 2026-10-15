@@ -31,9 +31,9 @@
       <a href="https://github.com/leipert/safari-emoji-rendering-perf">github.com/leipert/safari-emoji-rendering-perf</a>
     </p>
     <p>
-      The page draws a 29&times;29 grid of &#x2B1B;&#xFE0F; and &#x2B1C;&#xFE0F; emoji (841 emoji, the way people draw
-      QR codes in chat) and changes the text of its middle line on every animation frame for 4 seconds, as typing in
-      that line does. A browser that keeps up renders a frame every 16.7 ms, about 240 frames.
+      The page draws a 100&times;100 grid of &#x2B1B;&#xFE0F; and &#x2B1C;&#xFE0F; emoji (10,000 emoji, like a large
+      QR code drawn with emoji) and changes the text of its middle line on every animation frame for 4 seconds, as
+      typing in that line does. A browser that keeps up renders a frame every 16.7 ms, about 240 frames.
     </p>
     <p>
       Variants:
@@ -43,8 +43,8 @@
       <a href="?type=1">emoji, type in the middle line yourself</a>
     </p>
     <p>
-      Add <code>size=10</code>, <code>15</code>, or <code>20</code> to change the grid size, and combine parameters, for
-      example <code>?type=1&amp;lines=block</code>.
+      Add <code>size=29</code> (a typical QR code), <code>50</code>, or <code>75</code> to change the grid size, and
+      combine parameters, for example <code>?type=1&amp;lines=block</code>.
     </p>
     <div id="result">Running&hellip;</div>
     <div id="grid"></div>
@@ -53,7 +53,7 @@
       const useEmoji = params.get("emoji") !== "0";
       const blockLines = params.get("lines") === "block";
       const typing = params.get("type") === "1";
-      const size = Number(params.get("size") || 29);
+      const size = Number(params.get("size") || 100);
       const [dark, light] = useEmoji ? ["\u2B1B\uFE0F", "\u2B1C\uFE0F"] : ["#", "."];
       const label = [
         useEmoji ? `${size * size} emoji` : `${size * size} ASCII characters`,
@@ -65,14 +65,17 @@
       let seed = 7;
       const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
       const grid = document.getElementById("grid");
+      const middle = Math.floor(size / 2);
       const lines = [];
       for (let row = 0; row < size; row++) {
-        const text = Array.from({ length: size }, () => (random() < 0.5 ? dark : light)).join("");
+        // The edited line is 10 emoji shorter, so typing never makes it the widest line and the page width stays the same
+        const columns = row === middle ? Math.max(1, size - 10) : size;
+        const text = Array.from({ length: columns }, () => (random() < 0.5 ? dark : light)).join("");
         const line = document.createTextNode(blockLines ? text : text + "\n");
         (blockLines ? grid.appendChild(document.createElement("div")) : grid).appendChild(line);
         lines.push(line);
       }
-      const edited = lines[Math.floor(size / 2)];
+      const edited = lines[middle];
       const original = edited.data.replace(/\n$/, "");
 
       const show = text => {
@@ -112,7 +115,7 @@
             return;
           }
           const intervals = frames.slice(1).map((time, i) => time - frames[i]);
-          show(`${label}: ${frames.length} frames in 4 s, frame time ${summarize(intervals)}`);
+          show(`${label}: ${frames.length} frames in 4 s, frame time ${summarize(intervals)}, viewport ${innerWidth}x${innerHeight}`);
         };
         requestAnimationFrame(step);
       }
