@@ -24,9 +24,13 @@ many frames rendered. A browser that keeps up renders about 240 frames, one ever
 
 ## Results
 
-Measured on October 15, 2026 with Safari 27.0.1 (22625.1.29.11.28) on macOS 27.0.1 (26A434), on a MacBook Pro with an
-Apple M4 Pro and 48 GB. It reproduces on the built-in Retina display and on an external ASUS ProArt PA27JCV, in normal
-and private windows.
+Measured on October 15, 2026 with:
+
+- Safari `Version 27.0.1 (22625.1.29.11.28)`
+- macOS 27.0.1 (26A434)
+- MacBook Pro with an Apple M4 Pro and 48 GB
+
+It reproduces on the built-in Retina display and on an external ASUS ProArt PA27JCV, in normal and private windows.
 
 | Browser                                           | 841 emoji, one block  | 841 ASCII characters  | 841 emoji, one block per line |
 | ------------------------------------------------- | --------------------- | --------------------- | ----------------------------- |
