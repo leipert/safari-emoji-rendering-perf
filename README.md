@@ -4,12 +4,22 @@
 
 When Safari repaints a block of text, it draws every emoji in the block again, and each emoji costs time in Safari's GPU
 process. WebKit repaints a whole block when any line of its text changes, so typing in a block full of emoji redraws
-all of them on every key press. A 100×100 grid of ⬛️ and ⬜️ (10,000 emoji, like a large QR code drawn with emoji)
-renders at about 10 frames per second in Safari while one line changes, and each key press takes about 150 ms to
-appear. Chromium on the same machine renders the same page at 60 frames per second.
+all of them on every key press.
 
-After Safari had been running for about 10 days, each emoji cost about 15 times more, and a 29×29 grid (841 emoji)
-was already this slow. Restarting Safari restored the speed below.
+## Two problems
+
+1. **Each emoji is expensive to repaint.** In a freshly started Safari, each emoji in the repainted block costs about
+   0.013 ms. A 100×100 grid of ⬛️ and ⬜️ (10,000 emoji, like a large QR code drawn with emoji) renders at about 10
+   frames per second while one line changes, and each key press takes about 150 ms to appear. A minimal app that
+   embeds the same WebKit in a WKWebView behaves the same. Chromium on the same machine renders the page at 60 frames
+   per second.
+2. **The cost grows when Safari runs for a long time.** After Safari had been running for about 10 days, each emoji
+   cost about 0.2 ms, about 15 times more, because the GPU process created a new color converter for every emoji it
+   drew. A 29×29 grid (841 emoji) was already slow: 25 frames in 4 seconds. Restarting Safari restored the speed in
+   the first item.
+
+The first is a cost that Chromium does not have. The second is the bigger slowdown, but it only shows in a Safari that
+has been running for a long time.
 
 ## Run it
 
@@ -27,7 +37,8 @@ how many frames rendered. A browser that keeps up renders about 240 frames, one 
 | Smaller grids                      | [`?size=29`](https://leipert.github.io/safari-emoji-rendering-perf/?size=29), [`?size=50`](https://leipert.github.io/safari-emoji-rendering-perf/?size=50), [`?size=75`](https://leipert.github.io/safari-emoji-rendering-perf/?size=75) |
 
 The grid is wider than most windows, so the result line also shows the viewport size. The edited line is 10 emoji
-shorter than the others, so typing never changes the page width.
+shorter than the others, so typing never makes it the widest line. Otherwise the page width changes on every frame,
+and one block per line stays slow at 100×100 (a median of 47 ms), which hides the effect of splitting the lines.
 
 ## Results
 
@@ -57,8 +68,14 @@ Earlier the same day, Safari's GPU process had been running for about 10 days. W
 that drew a 29×29 grid, Safari rendered 25 frames in 4 seconds (median 166 ms) with 841 emoji, against 241 frames with
 ASCII and 223 frames with one block per line. Typing took a median of 244 ms per key press, and 26 ms with one block
 per line. The median frame time grew with the grid: 22 ms for 100 emoji, 48 ms for 225, 77 ms for 400. The minimal
-WKWebView app and Chromium kept up with the same page. This reproduced on the built-in Retina
-display and on the external display, in normal and private windows.
+WKWebView app and Chromium kept up with the same page. This reproduced on the built-in Retina display and on the
+external display, in normal and private windows.
+
+This screen recording (17 seconds) shows that Safari with the 29×29 page. The ASCII variant renders 241 frames in 4
+seconds. The emoji variant renders 30 frames (median 142 ms), and the typed letters appear a few at a time. Select the
+image to play [the video](https://leipert.github.io/safari-emoji-rendering-perf/safari-before-restart.mp4).
+
+<a href="https://leipert.github.io/safari-emoji-rendering-perf/safari-before-restart.mp4"><img src="safari-before-restart.png" width="494" alt="Safari after the emoji run: 841 emoji, one block, script edits: 30 frames in 4 s, frame time p50 142 ms, max 273 ms"></a>
 
 ## Observations
 
