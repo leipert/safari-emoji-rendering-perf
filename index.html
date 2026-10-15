@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Repainting text with many emoji is slow</title>
+    <style>
+      body {
+        max-width: 760px;
+        margin: 24px;
+        font: 14px/1.5 -apple-system, system-ui, sans-serif;
+      }
+      #result {
+        padding: 8px 12px;
+        background: #f0f0f0;
+        font: 13px ui-monospace, Menlo, monospace;
+      }
+      #grid {
+        margin: 16px 0;
+        font: 13px/1.4 ui-monospace, Menlo, monospace;
+        white-space: pre;
+      }
+      #grid[contenteditable] {
+        outline: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Repainting text with many emoji is slow</h1>
+    <p>
+      Source, results, and a profile:
+      <a href="https://github.com/leipert/safari-emoji-rendering-perf">github.com/leipert/safari-emoji-rendering-perf</a>
+    </p>
+    <p>
+      The page draws a 29&times;29 grid of &#x2B1B;&#xFE0F; and &#x2B1C;&#xFE0F; emoji (841 emoji, the way people draw
+      QR codes in chat) and changes the text of its middle line on every animation frame for 4 seconds, as typing in
+      that line does. A browser that keeps up renders a frame every 16.7 ms, about 240 frames.
+    </p>
+    <p>
+      Variants:
+      <a href="?">emoji</a> &middot;
+      <a href="?emoji=0">ASCII instead of emoji</a> &middot;
+      <a href="?lines=block">emoji, each line in its own block</a> &middot;
+      <a href="?type=1">emoji, type in the middle line yourself</a>
+    </p>
+    <p>
+      Add <code>size=10</code>, <code>15</code>, or <code>20</code> to change the grid size, and combine parameters, for
+      example <code>?type=1&amp;lines=block</code>.
+    </p>
+    <div id="result">Running&hellip;</div>
+    <div id="grid"></div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const useEmoji = params.get("emoji") !== "0";
+      const blockLines = params.get("lines") === "block";
+      const typing = params.get("type") === "1";
+      const size = Number(params.get("size") || 29);
+      const [dark, light] = useEmoji ? ["\u2B1B\uFE0F", "\u2B1C\uFE0F"] : ["#", "."];
+      const label = [
+        useEmoji ? `${size * size} emoji` : `${size * size} ASCII characters`,
+        blockLines ? "one block per line" : "one block",
+        typing ? "typing" : "script edits",
+      ].join(", ");
+
+      // A fixed pattern, like a QR code drawn with emoji
+      let seed = 7;
+      const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const grid = document.getElementById("grid");
+      const lines = [];
+      for (let row = 0; row < size; row++) {
+        const text = Array.from({ length: size }, () => (random() < 0.5 ? dark : light)).join("");
+        const line = document.createTextNode(blockLines ? text : text + "\n");
+        (blockLines ? grid.appendChild(document.createElement("div")) : grid).appendChild(line);
+        lines.push(line);
+      }
+      const edited = lines[Math.floor(size / 2)];
+      const original = edited.data.replace(/\n$/, "");
+
+      const show = text => {
+        document.getElementById("result").textContent = text;
+        document.title = text;
+      };
+      const summarize = values => {
+        const sorted = [...values].sort((a, b) => a - b);
+        return `p50 ${Math.round(sorted[Math.floor(sorted.length / 2)])} ms, max ${Math.round(sorted[sorted.length - 1])} ms`;
+      };
+
+      if (typing) {
+        grid.contentEditable = "true";
+        grid.spellcheck = false;
+        grid.focus();
+        getSelection().collapse(edited, original.length);
+        const latencies = [];
+        show(`${label}: type in the middle line`);
+        grid.addEventListener("keydown", () => {
+          const start = performance.now();
+          // The second animation frame after a key press starts once the frame showing the change has rendered
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              latencies.push(performance.now() - start);
+              show(`${label}: ${latencies.length} key presses, ${summarize(latencies)} from key press to frame`);
+            })
+          );
+        });
+      } else {
+        const frames = [];
+        const start = performance.now();
+        const step = () => {
+          frames.push(performance.now());
+          edited.data = original + "abcdefghijklmnopqrst".slice(0, frames.length % 21) + (blockLines ? "" : "\n");
+          if (performance.now() - start < 4000) {
+            requestAnimationFrame(step);
+            return;
+          }
+          const intervals = frames.slice(1).map((time, i) => time - frames[i]);
+          show(`${label}: ${frames.length} frames in 4 s, frame time ${summarize(intervals)}`);
+        };
+        requestAnimationFrame(step);
+      }
+    </script>
+  </body>
+</html>
